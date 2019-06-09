@@ -1,0 +1,14 @@
+player:
+id,
+nickname
+image src,
+weight,
+balls
+[(x,y), (x,y), (x,y), (x,y)],
+(x,y) -  мировая координата курсора - передавать n раз в секунду
+
+food:
+[(x,y), (x,y)] - список координат еды
+
+traps:
+[(x,y,r), (x,y,r)]
