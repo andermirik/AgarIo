@@ -19,10 +19,11 @@ app = socketio.WSGIApp(sio, static_files={
 def connect(sid, environ):
     print('connect ', sid)
     world.addPlayer(sid)
+    for i in range(15):
+        world.addPlayer(chr(i))
 
 @sio.on('update_start')
 def update_start(sid, data):
-    #print('update_start ', data)
     world.updatePlayerWithSid(sid, data)
     return
 
@@ -35,7 +36,10 @@ def gameloop():
     while True:
         world.updateState()
         print('emitting', len(world.players))
-        sio.emit('state_changed', world.players)
+        if len(world.players):
+            pprint(world.players)
+            for sid in world.players:
+               sio.emit('state_changed', world.generateStateForSid(sid), room=sid)
         time.sleep(1/60)
 
 if __name__== '__main__':

@@ -1,6 +1,8 @@
-from random import random
+from random import random, randint
 from threading import Lock
 from math import sqrt
+import copy
+KOEF = 1
 
 class World:
     def __init__(self):
@@ -13,43 +15,70 @@ class World:
         self.mutex.acquire()
         x = random()*self.width
         y = random()*self.height
+        speed = 10
+        if len(sid)<6:
+            speed = 0
         self.players[sid] = {
-          'position': [x, y],
-          'cursor_position':[x, y]
+          'circles': [
+              {
+                'position': [x, y],
+                'radius': randint(50, 100),
+                'speed' : speed
+              }
+          ],
+          'vector':[0, 0],
+          'distance':0,
+          'image_code':randint(0, 5)
          }
         self.mutex.release()
-        return
 
     def removePlayer(self, sid):
         self.mutex.acquire()
         self.players.pop(sid, None)
         self.mutex.release()
-        return
 
-    def updatePlayerWithSid(self, sid, cursor_position):
+    def updatePlayerWithSid(self, sid, data):
         self.mutex.acquire()
-
-        self.players[sid]['cursor_position'] = cursor_position
-
+        self.players[sid]['vector'] = data['vector']
+        self.players[sid]['distance'] = data['distance']
         self.mutex.release()
-        return
+
 
     def updateState(self):
         self.mutex.acquire()
-
         for sid in self.players:
             player = self.players[sid]
-            _from = player['position']
-            _to = player['cursor_position']
-            #print('from ', _from)
-            #print('to ', _to)
-            move = self.move( _from, _to, 3)
-            #print('move ', move)
-            player['position'][0]-=move[0]
-            player['position'][1]-=move[1]
-
+            self.calculateMovePlayer(player)
         self.mutex.release()
-        return
+
+
+    def generateStateForSid(self, sid):
+        self.mutex.acquire()
+        players = copy.deepcopy(self.players)
+        x, y = players[sid]['circles'][0]['position']
+        for player in players.values():
+            player['circles'][0]['position'][0] -= x
+            player['circles'][0]['position'][1] -= y
+            player['circles'][0]['position'][0] *= KOEF
+            player['circles'][0]['position'][1] *= KOEF
+            player['circles'][0]['radius']*=KOEF
+        self.mutex.release()
+        return players
+
+    def calculateMovePlayer(self, player):
+        for circle in player['circles']:
+            speed = circle['speed']
+            dist = player['distance']
+
+            if dist < circle['radius'] and dist != 0:
+                speed = circle['speed']/(circle['radius']/dist)
+
+            circle['position'][0]-=player['vector'][0]*speed
+            circle['position'][1]-=player['vector'][1]*speed
+
+            circle['position'][0] = max(min(circle['position'][0], self.width), 0)
+            circle['position'][1] = max(min(circle['position'][1], self.height), 0)
+
 
     def distance(self, p1, p2):
         return sqrt((p2[0]-p1[0])**2 + (p2[1]-p1[1])**2)
@@ -62,12 +91,4 @@ class World:
         else:
             vector[0] = 0
             vector[1] = 0
-        return vector
-
-    def move(self, _from, to, speed):
-        vector = [_from[0]- to[0], _from[1]-to[1]]
-        vector = self.normalize(vector)
-        #print('normalize ', vector)
-        vector[0] = vector[0]*speed
-        vector[1] = vector[1]*speed
         return vector
